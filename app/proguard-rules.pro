@@ -1,0 +1,2 @@
+-keep class com.troxzy.trxchess.engine.nativeengine.** { *; }
+-keepclassmembers class * { native <methods>; }

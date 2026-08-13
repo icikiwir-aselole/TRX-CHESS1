@@ -1,0 +1,39 @@
+openapi: 3.1.0
+info:
+  title: TRX-CHESS Backend Contract
+  version: 1.0.0
+paths:
+  /v1/config:
+    get:
+      operationId: getConfig
+      responses:
+        '200':
+          description: Feature configuration
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfigResponse' }
+  /v1/telemetry:
+    post:
+      operationId: postTelemetry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TelemetryEvent' }
+      responses:
+        '204': {description: Accepted}
+components:
+  schemas:
+    ConfigResponse:
+      type: object
+      required: [version, flags]
+      properties:
+        version: {type: integer}
+        flags: {type: object, additionalProperties: {type: boolean}}
+    TelemetryEvent:
+      type: object
+      required: [event, timestamp]
+      properties:
+        event: {type: string}
+        timestamp: {type: integer, format: int64}
+        metrics: {type: object, additionalProperties: true}
