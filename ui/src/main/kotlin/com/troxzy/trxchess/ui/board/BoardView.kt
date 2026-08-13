@@ -177,6 +177,16 @@ class BoardView @JvmOverloads constructor(
         invalidate()
     }
 
+    override fun onDetachedFromWindow() {
+        // Never leak animators when the view leaves the window (theme
+        // recreation, navigation, overlay host).
+        animator?.cancel()
+        animator = null
+        animated.clear()
+        captureEffect = null
+        super.onDetachedFromWindow()
+    }
+
     fun setSelected(square: Square?) {
         selected = square
         invalidate()

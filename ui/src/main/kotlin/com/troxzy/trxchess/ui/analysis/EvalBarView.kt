@@ -72,6 +72,12 @@ class EvalBarView @JvmOverloads constructor(
         }
     }
 
+    override fun onDetachedFromWindow() {
+        animator?.cancel()
+        animator = null
+        super.onDetachedFromWindow()
+    }
+
     fun fraction(ev: Evaluation): Float = when (ev) {
         is Evaluation.Mate -> if (ev.plies > 0) 1f else 0f
         is Evaluation.Centipawn -> {

@@ -157,6 +157,12 @@ class TrxButton @JvmOverloads constructor(
         }
     }
 
+    override fun onDetachedFromWindow() {
+        pressAnimator?.cancel()
+        pressAnimator = null
+        super.onDetachedFromWindow()
+    }
+
     private fun blend(a: Int, b: Int, t: Float): Int {
         val red = (Color.red(a) + (Color.red(b) - Color.red(a)) * t).toInt()
         val green = (Color.green(a) + (Color.green(b) - Color.green(a)) * t).toInt()
