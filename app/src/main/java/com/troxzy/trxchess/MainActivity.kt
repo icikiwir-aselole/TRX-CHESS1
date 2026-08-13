@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var container: AppContainer
     private val backStack = ArrayDeque<Screen>()
     private lateinit var screenHost: FrameLayout
+    private var transitionAnimator: android.view.ViewPropertyAnimator? = null
 
     private val overlayPermission =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -85,6 +86,12 @@ class MainActivity : ComponentActivity() {
         container.designSystem.onUiModeChanged(newConfig.uiMode)
     }
 
+    override fun onDestroy() {
+        transitionAnimator?.cancel()
+        transitionAnimator = null
+        super.onDestroy()
+    }
+
     private fun currentRoot(): View? = screenHost.getChildAt(screenHost.childCount - 1)
 
     private fun recreateCurrentScreen() {
@@ -93,6 +100,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showScreen(screen: Screen) {
+        transitionAnimator?.cancel()
+        transitionAnimator = null
         screenHost.removeAllViews()
         val view: View = when (screen) {
             Screen.Home -> HomeScreen(this, container, ::navigate)
@@ -108,6 +117,17 @@ class MainActivity : ComponentActivity() {
             Screen.About -> AboutScreen(this, container)
         }
         screenHost.addView(view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        val duration = container.designSystem.scaledDuration(
+            com.troxzy.trxchess.ui.designsystem.AnimationCategory.STANDARD,
+            0L,
+        )
+        if (container.designSystem.visualPolicy.motionEnabled && duration > 0L) {
+            view.alpha = 0f
+            transitionAnimator = view.animate()
+                .alpha(1f)
+                .setDuration(duration)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+        }
     }
 
     private fun navigate(screen: Screen) {
