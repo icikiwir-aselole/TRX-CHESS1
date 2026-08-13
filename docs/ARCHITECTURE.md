@@ -51,3 +51,14 @@ system and overlay bridge; screens receive it through the activity.
 - Secrets stored via Android Keystore AES-GCM (`security` module)
 - FEN input is validated strictly (`ChessPosition.fromFen`) before use
 - No secrets in release configuration
+
+## Current Verification
+
+```text
+assembleDebug       PASS
+assembleRelease     PASS
+unitTest             PASS (48 tests)
+lint                 PASS (0 errors)
+instrumentedTest     NOT RUN (no device)
+benchmark            NOT RUN (no device)
+```

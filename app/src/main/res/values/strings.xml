@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">TRX-CHESS</string>
-    <string name="about_line">By: Troxzy · t.me/SoloBanNoTrash</string>
+    <string name="about_line">By Troxzy · t.me/SoloBanNoTrash</string>
 
     <!-- Navigation -->
     <string name="nav_back">Back</string>

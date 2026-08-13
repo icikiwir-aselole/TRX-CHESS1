@@ -45,3 +45,14 @@ architecture validation. Production strength plugs in behind the same
 - [PERFORMANCE.md](PERFORMANCE.md) — adaptive quality and render budget
 - [SECURITY.md](SECURITY.md) — permissions, storage, input handling
 - [COMPATIBILITY.md](COMPATIBILITY.md) — API-level gating
+
+## Current Verification
+
+```text
+assembleDebug       PASS
+assembleRelease     PASS
+unitTest             PASS (48 tests)
+lint                 PASS (0 errors)
+instrumentedTest     NOT RUN (no device)
+benchmark            NOT RUN (no device)
+```

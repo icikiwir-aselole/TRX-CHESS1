@@ -10,11 +10,14 @@
 
 ## Input handling
 
-- FEN strings are validated strictly before use (`ChessPosition.fromFen`
-  requires a legal board layout; failure is surfaced as an error, never
-  silently applied).
+- FEN strings are validated strictly before use: `Fen.parseStrict` checks
+  field count, board layout, piece symbols, side to move, castling rights,
+  en-passant square and clocks, and returns a categorized `FenError` — raw
+  exceptions are never shown to the user and malformed input is never
+  silently applied.
 - Imported PGN/FEN must be treated as untrusted input; the parser layer
   bounds all fields.
+- FEN parsing runs off the main thread (`Dispatchers.Default`).
 
 ## Permissions (minimal surface)
 
@@ -34,3 +37,13 @@ only data published by the app layer. It never drives engine logic.
 
 The automation subsystem remains fair-play gated. The app does not implement
 anti-cheat bypass or stealth automation.
+## Current Verification
+
+```text
+assembleDebug       PASS
+assembleRelease     PASS
+unitTest             PASS (48 tests)
+lint                 PASS (0 errors)
+instrumentedTest     NOT RUN (no device)
+benchmark            NOT RUN (no device)
+```

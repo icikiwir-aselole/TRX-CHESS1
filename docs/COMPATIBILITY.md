@@ -28,3 +28,13 @@
 
 - Instrumented tests require a device; not run in this environment.
 - The baseline native engine is integration-grade, not tournament strength.
+## Current Verification
+
+```text
+assembleDebug       PASS
+assembleRelease     PASS
+unitTest             PASS (48 tests)
+lint                 PASS (0 errors)
+instrumentedTest     NOT RUN (no device)
+benchmark            NOT RUN (no device)
+```
