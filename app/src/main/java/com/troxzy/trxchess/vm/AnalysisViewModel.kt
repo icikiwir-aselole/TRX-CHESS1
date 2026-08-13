@@ -69,6 +69,8 @@ class AnalysisViewModel(
 
     private var engineInitialized = false
 
+    private var fenLoadGeneration = 0L
+
     init {
         viewModelScope.launch {
             coordinator.state.collect { coordState ->
@@ -106,8 +108,10 @@ class AnalysisViewModel(
 
     /** Strict, off-main-thread FEN import. Stale engine results are rejected by the coordinator. */
     fun loadFen(fen: String) {
+        val generation = ++fenLoadGeneration
         viewModelScope.launch {
             val result = withContext(Dispatchers.Default) { Fen.parseStrict(fen.trim()) }
+            if (generation != fenLoadGeneration) return@launch
             when (result) {
                 is Fen.FenResult.Err -> {
                     _state.value = _state.value.copy(fenError = result.error)
