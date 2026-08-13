@@ -16,6 +16,7 @@ android {
         release { isMinifyEnabled = true; isShrinkResources = true; proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro") }
     }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    buildFeatures { buildConfig = true }
 }
 dependencies {
     implementation(project(":core:common")); implementation(project(":chess")); implementation(project(":engine:api")); implementation(project(":engine:uci")); implementation(project(":engine:native")); implementation(project(":analysis:coordinator")); implementation(project(":position:api")); implementation(project(":data")); implementation(project(":security")); implementation(project(":overlay")); implementation(project(":automation")); implementation(project(":ui"))
