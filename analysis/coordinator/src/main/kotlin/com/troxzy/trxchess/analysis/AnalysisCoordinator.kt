@@ -7,6 +7,7 @@ import com.troxzy.trxchess.engine.api.AnalysisRequest
 import com.troxzy.trxchess.engine.api.ChessEngine
 import com.troxzy.trxchess.engine.api.EngineAnalysis
 import com.troxzy.trxchess.engine.api.EngineConfig
+import com.troxzy.trxchess.engine.api.EngineResult
 import com.troxzy.trxchess.engine.api.EngineState
 import com.troxzy.trxchess.engine.api.Priority
 import com.troxzy.trxchess.engine.api.SearchLimit
@@ -25,9 +26,11 @@ import java.util.UUID
 /**
  * Single owner of engine interaction for the UI layer.
  *
- * State machines are explicit ([CoordinatorState], [EngineState]). Analysis
- * results carry a position identity so stale results from a previous
- * position are never applied.
+ * Stale-result protection: every analysis run records an identity made of
+ * analysisId + positionHash + engineVersion + configHash + active session.
+ * An engine result is applied only when ALL components match, so a late
+ * result from a superseded search (or a re-initialized engine, or a changed
+ * configuration) can never reach the UI. Timestamps alone are never used.
  */
 class AnalysisCoordinator(
     private val engine: ChessEngine,
@@ -43,8 +46,13 @@ class AnalysisCoordinator(
     val engineState: StateFlow<EngineState> = _engineState.asStateFlow()
 
     private var collector: Job? = null
-    private var activeHash: String? = null
+    private var currentMeta: AnalysisMeta? = null
+    private var activeConfig: EngineConfig = EngineConfig()
     private var engineWatcher: Job? = null
+
+    /** Identity of the active user session; changes invalidate in-flight results. */
+    var sessionId: String = "default"
+        private set
 
     init {
         engineWatcher = CoroutineScope(SupervisorJob() + dispatchers.engine).launch {
@@ -52,7 +60,16 @@ class AnalysisCoordinator(
         }
     }
 
-    suspend fun initialize(c: EngineConfig) = engine.initialize(c)
+    suspend fun initialize(c: EngineConfig): EngineResult = runCatching {
+        val result = engine.initialize(c)
+        activeConfig = c
+        result
+    }.getOrElse { EngineResult.Error("engine init failed", it) }
+
+    /** Starts a new session; results tagged with an older session are rejected. */
+    fun beginSession(id: String) {
+        sessionId = id
+    }
 
     suspend fun analyze(
         p: ChessPosition,
@@ -62,18 +79,42 @@ class AnalysisCoordinator(
     ) {
         stop()
         val hash = Fen.serialize(p).hashCode().toString(16)
-        activeHash = hash
-        _state.value = CoordinatorState.Analyzing(UUID.randomUUID().toString())
+        val analysisId = UUID.randomUUID().toString()
+        val meta = AnalysisMeta(
+            analysisId = analysisId,
+            positionHash = hash,
+            engineVersion = engine.version,
+            configHash = activeConfig.configHash(),
+            sessionId = sessionId,
+        )
+        currentMeta = meta
+        _state.value = CoordinatorState.Analyzing(analysisId)
         collector = CoroutineScope(SupervisorJob() + dispatchers.engine).launch {
             engine.observeAnalysis().collectLatest { r ->
-                if (activeHash == hash) {
+                if (isCurrent(r, meta)) {
                     _analysis.value = r
                     _state.value = CoordinatorState.Ready
                 }
             }
         }
-        engine.startAnalysis(AnalysisRequest(p, limit, multiPv, priority))
+        engine.startAnalysis(
+            AnalysisRequest(
+                position = p,
+                limit = limit,
+                multiPv = multiPv,
+                priority = priority,
+                analysisId = analysisId,
+            )
+        )
     }
+
+    /** Full identity match: analysisId, positionHash, engineVersion, configHash, session. */
+    private fun isCurrent(r: EngineAnalysis, meta: AnalysisMeta): Boolean =
+        r.requestId == meta.analysisId &&
+            r.positionKey == meta.positionHash &&
+            engine.version == meta.engineVersion &&
+            activeConfig.configHash() == meta.configHash &&
+            sessionId == meta.sessionId
 
     suspend fun stop() {
         collector?.cancelAndJoin()
@@ -86,9 +127,18 @@ class AnalysisCoordinator(
         stop()
         engine.shutdown()
         engineWatcher?.cancel()
+        currentMeta = null
         _state.value = CoordinatorState.Stopped
     }
 }
+
+private data class AnalysisMeta(
+    val analysisId: String,
+    val positionHash: String,
+    val engineVersion: String,
+    val configHash: String,
+    val sessionId: String,
+)
 
 sealed interface CoordinatorState {
     data object Idle : CoordinatorState
