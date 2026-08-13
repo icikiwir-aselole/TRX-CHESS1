@@ -1,1 +1,22 @@
-<resources><style name="Theme.TRXChess" parent="android:style/Theme.Material.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">#7CC4FF</item><item name="android:statusBarColor">#101418</item><item name="android:navigationBarColor">#101418</item><item name="android:windowLightStatusBar">false</item></style></resources>
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.TRXChess" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowBackground">@color/trx_background</item>
+        <item name="android:colorAccent">@color/trx_primary</item>
+        <item name="android:statusBarColor">@color/trx_background</item>
+        <item name="android:navigationBarColor">@color/trx_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowDisablePreview">false</item>
+    </style>
+
+    <style name="Theme.TRXChess.Splash" parent="Theme.TRXChess">
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
+
+    <style name="Theme.TRXChess.Overlay" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+</resources>

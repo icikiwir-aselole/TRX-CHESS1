@@ -1,1 +1,137 @@
-<resources><string name="app_name">TRX-CHESS</string><string name="about">By: Troxzy · t.me/SoloBanNoTrash</string></resources>
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TRX-CHESS</string>
+    <string name="about_line">By: Troxzy · t.me/SoloBanNoTrash</string>
+
+    <!-- Navigation -->
+    <string name="nav_back">Back</string>
+
+    <!-- Home -->
+    <string name="home_title">TRX-CHESS</string>
+    <string name="home_subtitle">Cyber chess analysis</string>
+    <string name="home_quick_analysis">Quick Analysis</string>
+    <string name="home_quick_analysis_desc">Instant engine evaluation of the current position</string>
+    <string name="home_advanced_analysis">Advanced Analysis</string>
+    <string name="home_advanced_analysis_desc">Depth, MultiPV, evaluation graph and full controls</string>
+    <string name="home_board_editor">Board Editor</string>
+    <string name="home_board_editor_desc">Build a position from any FEN or by editing the board</string>
+    <string name="home_history">Game History</string>
+    <string name="home_history_desc">Saved analysis sessions</string>
+    <string name="home_overlay">Overlay</string>
+    <string name="home_overlay_desc">Floating analysis panel on top of other apps</string>
+    <string name="home_settings">Settings</string>
+    <string name="home_settings_desc">Engine, appearance, animation and performance</string>
+    <string name="home_diagnostics">Diagnostics</string>
+    <string name="home_diagnostics_desc">System, engine and rendering telemetry</string>
+    <string name="home_about">About</string>
+    <string name="home_about_desc">Version, licenses and credits</string>
+
+    <!-- Analysis -->
+    <string name="analysis_title">Analysis</string>
+    <string name="analysis_engine_status">Engine status</string>
+    <string name="analysis_depth">Depth</string>
+    <string name="analysis_nodes">Nodes</string>
+    <string name="analysis_nps">NPS</string>
+    <string name="analysis_evaluation">Evaluation</string>
+    <string name="analysis_best_line">Best line</string>
+    <string name="analysis_controls_analyze">Analyze</string>
+    <string name="analysis_controls_stop">Stop</string>
+    <string name="analysis_controls_undo">Undo</string>
+    <string name="analysis_controls_new">New game</string>
+    <string name="analysis_flip">Flip board</string>
+    <string name="analysis_no_moves">No moves available</string>
+    <string name="analysis_promote">Promote to</string>
+
+    <!-- Board editor -->
+    <string name="editor_title">Board Editor</string>
+    <string name="editor_fen_hint">Paste FEN…</string>
+    <string name="editor_load">Load</string>
+    <string name="editor_clear">Clear</string>
+    <string name="editor_invalid_fen">Invalid FEN</string>
+    <string name="editor_tap_instruction">Tap a square to toggle piece selection</string>
+
+    <!-- History -->
+    <string name="history_title">Game History</string>
+    <string name="history_empty">No saved sessions yet</string>
+    <string name="history_delete">Delete</string>
+    <string name="history_saved_at">Saved %1$s</string>
+
+    <!-- Overlay -->
+    <string name="overlay_title">Overlay</string>
+    <string name="overlay_permission_needed">Overlay permission required</string>
+    <string name="overlay_permission_grant">Grant permission</string>
+    <string name="overlay_enable">Enable overlay</string>
+    <string name="overlay_disable">Disable overlay</string>
+    <string name="overlay_compact">Compact panel</string>
+    <string name="overlay_opacity">Opacity</string>
+    <string name="overlay_active">Overlay is running</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_engine">Engine</string>
+    <string name="settings_engine_threads">Threads</string>
+    <string name="settings_engine_hash">Hash (MB)</string>
+    <string name="settings_engine_multipv">MultiPV</string>
+    <string name="settings_analysis">Analysis</string>
+    <string name="settings_analysis_default_depth">Default depth</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_appearance_theme">Theme</string>
+    <string name="settings_appearance_theme_dark">Dark</string>
+    <string name="settings_appearance_theme_light">Light</string>
+    <string name="settings_appearance_theme_system">System</string>
+    <string name="settings_appearance_board_theme">Board theme</string>
+    <string name="settings_animation">Animation</string>
+    <string name="settings_animation_enabled">Animation</string>
+    <string name="settings_animation_quality">Visual quality</string>
+    <string name="settings_animation_particles">Particle effects</string>
+    <string name="settings_animation_reduced">Reduced motion</string>
+    <string name="settings_overlay">Overlay</string>
+    <string name="settings_performance">Performance</string>
+    <string name="settings_performance_power_saver">Power saver</string>
+    <string name="settings_performance_high_quality">High visual quality</string>
+    <string name="settings_battery">Battery</string>
+    <string name="settings_battery_low_battery_stop">Stop analysis below 15%</string>
+    <string name="settings_security">Security</string>
+    <string name="settings_security_keystore">Keystore protected storage</string>
+    <string name="settings_security_keystore_desc">Secrets are encrypted with Android Keystore (AES-GCM)</string>
+    <string name="settings_diagnostics">Diagnostics</string>
+    <string name="settings_diagnostics_telemetry">Telemetry collection</string>
+    <string name="settings_about">About</string>
+
+    <!-- Diagnostics -->
+    <string name="diagnostics_title">Diagnostics</string>
+    <string name="diagnostics_system">System</string>
+    <string name="diagnostics_engine">Engine</string>
+    <string name="diagnostics_performance">Performance</string>
+    <string name="diagnostics_rendering">Rendering</string>
+    <string name="diagnostics_storage">Storage</string>
+    <string name="diagnostics_network">Network</string>
+    <string name="diagnostics_security">Security</string>
+    <string name="diagnostics_unknown">Unknown</string>
+    <string name="diagnostics_not_available">Not available</string>
+
+    <!-- About -->
+    <string name="about_title">About</string>
+    <string name="about_author">By Troxzy</string>
+    <string name="about_telegram">t.me/SoloBanNoTrash</string>
+    <string name="about_version">Version %1$s (%2$d)</string>
+    <string name="about_engine_version">Engine baseline</string>
+    <string name="about_licenses">Open source licenses</string>
+    <string name="about_offline_first">Offline-first · native engine architecture</string>
+
+    <!-- Errors -->
+    <string name="error_engine_unavailable">Engine unavailable</string>
+    <string name="error_engine_stopped">The analysis engine stopped unexpectedly.</string>
+    <string name="error_retry">Retry</string>
+    <string name="error_diagnostics">Diagnostics</string>
+
+    <!-- Misc -->
+    <string name="status_unknown">Unknown</string>
+    <string name="status_initializing">Initializing</string>
+    <string name="status_ready">Ready</string>
+    <string name="status_analyzing">Analyzing</string>
+    <string name="status_stopping">Stopping</string>
+    <string name="status_recovering">Recovering</string>
+    <string name="status_error">Error</string>
+    <string name="status_stopped">Stopped</string>
+</resources>
