@@ -201,6 +201,9 @@ class AnalysisViewModel(
     private fun applyMove(move: Move) {
         val s = _state.value
         val position = runCatching { s.position.apply(move) }.getOrNull() ?: return
+        // apply() is a no-op when the move is not legal on the current
+        // position (e.g. a duplicate rapid tap); never record it.
+        if (position == s.position) return
         _state.value = s.copy(
             position = position,
             history = s.history + move,
@@ -208,6 +211,7 @@ class AnalysisViewModel(
             legalTargets = emptySet(),
             pendingPromotion = null,
             status = position.status(),
+            thinking = false,
         )
         coordinator.beginSession(UUID.randomUUID().toString())
         viewModelScope.launch { coordinator.stop() }
@@ -225,22 +229,27 @@ class AnalysisViewModel(
             legalTargets = emptySet(),
             pendingPromotion = null,
             status = position.status(),
+            thinking = false,
         )
         coordinator.beginSession(UUID.randomUUID().toString())
         viewModelScope.launch { coordinator.stop() }
     }
 
     fun startAnalysis(depth: Int? = null) {
-        val s = _state.value
-        if (s.position.legalMoves().isEmpty()) {
-            _state.value = s.copy(engineError = "No legal moves")
-            return
-        }
-        _state.value = s.copy(thinking = true, engineError = null)
         val limit = SearchLimit.Depth(depth ?: settings.settings.value.defaultDepth)
         val multiPv = settings.settings.value.multiPv
         viewModelScope.launch {
+            val s0 = _state.value
+            if (s0.position.legalMoves().isEmpty()) {
+                _state.value = s0.copy(engineError = "No legal moves", thinking = false)
+                return@launch
+            }
+            _state.value = s0.copy(thinking = true, engineError = null)
             ensureEngineReady()
+            // A move/undo/stop between the press and engine readiness sets
+            // thinking=false; never analyze a stale snapshot.
+            val s = _state.value
+            if (!s.thinking) return@launch
             coordinator.analyze(s.position, limit, multiPv)
         }
     }
