@@ -19,7 +19,7 @@ data class EditorUiState(
     val fenText: String = "",
     val selectedPiece: Piece = Piece(Side.WHITE, PieceType.QUEEN),
     val whiteSide: Boolean = true,
-    val fenError: String? = null,
+    val fenError: Fen.FenError? = null,
 )
 
 /**
@@ -68,13 +68,21 @@ class EditorViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun loadFen(fen: String): Boolean {
-        val position = runCatching { ChessPosition.fromFen(fen) }.getOrNull()
-        if (position == null) {
-            _state.value = _state.value.copy(fenError = "Invalid FEN")
-            return false
+        val result = Fen.parseStrict(fen.trim())
+        when (result) {
+            is Fen.FenResult.Err -> {
+                _state.value = _state.value.copy(fenError = result.error)
+                return false
+            }
+            is Fen.FenResult.Ok -> {
+                _state.value = _state.value.copy(
+                    position = result.position,
+                    fenText = Fen.serialize(result.position),
+                    fenError = null,
+                )
+                return true
+            }
         }
-        _state.value = _state.value.copy(position = position, fenText = fen, fenError = null)
-        return true
     }
 
     fun currentFen(): String = _state.value.fenText

@@ -18,6 +18,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.lifecycle.ViewModelProvider
 import com.troxzy.trxchess.R
+import com.troxzy.trxchess.chess.Fen
 import com.troxzy.trxchess.chess.Piece
 import com.troxzy.trxchess.chess.PieceType
 import com.troxzy.trxchess.di.AppContainer
@@ -207,7 +208,7 @@ class EditorScreen @JvmOverloads constructor(
                 fenInput.setText(state.fenText)
                 fenInput.setSelection(state.fenText.length)
                 if (state.fenError != null) {
-                    fenError.text = state.fenError
+                    fenError.text = context.getString(fenErrorString(state.fenError))
                     fenError.visibility = View.VISIBLE
                 }
                 refreshPalette()
@@ -228,6 +229,17 @@ class EditorScreen @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         scope.cancel()
+    }
+
+    private fun fenErrorString(error: Fen.FenError): Int = when (error) {
+        Fen.FenError.INVALID_FIELD_COUNT -> R.string.fen_error_field_count
+        Fen.FenError.INVALID_BOARD -> R.string.fen_error_board
+        Fen.FenError.INVALID_PIECE -> R.string.fen_error_piece
+        Fen.FenError.INVALID_SIDE_TO_MOVE -> R.string.fen_error_side_to_move
+        Fen.FenError.INVALID_CASTLING_RIGHTS -> R.string.fen_error_castling
+        Fen.FenError.INVALID_EN_PASSANT -> R.string.fen_error_en_passant
+        Fen.FenError.INVALID_HALFMOVE_CLOCK -> R.string.fen_error_halfmove
+        Fen.FenError.INVALID_FULLMOVE_NUMBER -> R.string.fen_error_fullmove
     }
 
     private fun dp(v: Int): Int = (v * dpF).toInt()

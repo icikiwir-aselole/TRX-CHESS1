@@ -134,4 +134,31 @@
     <string name="status_recovering">Recovering</string>
     <string name="status_error">Error</string>
     <string name="status_stopped">Stopped</string>
+
+    <!-- Position status -->
+    <string name="position_status_check">Check</string>
+    <string name="position_status_checkmate">Checkmate</string>
+    <string name="position_status_stalemate">Stalemate</string>
+
+    <!-- Promotion dialog -->
+    <string name="promotion_title">Promote to</string>
+    <string name="promotion_cancel">Cancel</string>
+    <string name="promotion_queen">Promote to queen</string>
+    <string name="promotion_rook">Promote to rook</string>
+    <string name="promotion_bishop">Promote to bishop</string>
+    <string name="promotion_knight">Promote to knight</string>
+
+    <!-- FEN import -->
+    <string name="analysis_fen_label">FEN</string>
+    <string name="analysis_fen_load">Load</string>
+    <string name="analysis_fen_clear">Clear</string>
+    <string name="analysis_fen_hint">Paste a FEN position</string>
+    <string name="fen_error_field_count">FEN must have 4 to 6 fields</string>
+    <string name="fen_error_board">Board layout is invalid</string>
+    <string name="fen_error_piece">Unknown piece symbol</string>
+    <string name="fen_error_side_to_move">Side to move must be \'w\' or \'b\'</string>
+    <string name="fen_error_castling">Invalid castling rights</string>
+    <string name="fen_error_en_passant">Invalid en-passant square</string>
+    <string name="fen_error_halfmove">Halfmove clock must be a non-negative number</string>
+    <string name="fen_error_fullmove">Fullmove number must be a positive number</string>
 </resources>

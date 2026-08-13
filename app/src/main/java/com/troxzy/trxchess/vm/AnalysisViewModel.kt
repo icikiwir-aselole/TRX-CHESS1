@@ -6,25 +6,35 @@ import androidx.lifecycle.viewModelScope
 import com.troxzy.trxchess.analysis.AnalysisCoordinator
 import com.troxzy.trxchess.analysis.CoordinatorState
 import com.troxzy.trxchess.chess.ChessPosition
+import com.troxzy.trxchess.chess.Fen
 import com.troxzy.trxchess.chess.Move
+import com.troxzy.trxchess.chess.PieceType
+import com.troxzy.trxchess.chess.PositionStatus
 import com.troxzy.trxchess.chess.Square
-import com.troxzy.trxchess.di.HistoryStore
 import com.troxzy.trxchess.di.AppContainer
 import com.troxzy.trxchess.engine.api.EngineAnalysis
+import com.troxzy.trxchess.engine.api.EngineResult
 import com.troxzy.trxchess.engine.api.EngineState
 import com.troxzy.trxchess.engine.api.Evaluation
 import com.troxzy.trxchess.engine.api.SearchLimit
 import com.troxzy.trxchess.overlay.OverlayPublisher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.UUID
 
 data class AnalysisUiState(
     val position: ChessPosition = ChessPosition.start(),
     val history: List<Move> = emptyList(),
     val selected: Square? = null,
     val legalTargets: Set<Square> = emptySet(),
+    val status: PositionStatus = PositionStatus.NORMAL,
+    /** Base move awaiting a promotion piece choice; non-null shows the dialog. */
+    val pendingPromotion: Move? = null,
     val engineState: EngineState = EngineState.Uninitialized,
     val coordinatorState: CoordinatorState = CoordinatorState.Idle,
     val analysis: EngineAnalysis? = null,
@@ -35,14 +45,15 @@ data class AnalysisUiState(
     val flipped: Boolean = false,
     val engineError: String? = null,
     val thinking: Boolean = false,
+    val fenError: Fen.FenError? = null,
 )
 
 /**
  * Analysis screen state.
  *
- * Owns the position history, selection, legal moves and the engine
- * interaction through the coordinator. Board views render this state and
- * forward taps back here; no engine logic lives in the view.
+ * Owns the position history, selection, legal moves, promotion flow and the
+ * engine interaction through the coordinator. Board views render this state
+ * and forward taps back here; no engine logic lives in the view.
  */
 class AnalysisViewModel(
     private val container: AppContainer,
@@ -65,7 +76,7 @@ class AnalysisViewModel(
             }
         }
         viewModelScope.launch {
-            coordinator.analysis.collect { result ->
+            coordinator.analysis.sample(100).collect { result ->
                 val best = result?.lines?.firstOrNull()
                 _state.value = _state.value.copy(
                     analysis = result,
@@ -93,26 +104,58 @@ class AnalysisViewModel(
         super.onCleared()
     }
 
-    fun loadFen(fen: String?): Boolean {
-        if (fen == null) return false
-        val position = runCatching { ChessPosition.fromFen(fen) }.getOrNull() ?: return false
-        _state.value = AnalysisUiState(
-            position = position,
-            engineState = _state.value.engineState,
-            coordinatorState = _state.value.coordinatorState,
-        )
+    /** Strict, off-main-thread FEN import. Stale engine results are rejected by the coordinator. */
+    fun loadFen(fen: String) {
         viewModelScope.launch {
-            container.history.save(fen, "FEN session")
+            val result = withContext(Dispatchers.Default) { Fen.parseStrict(fen.trim()) }
+            when (result) {
+                is Fen.FenResult.Err -> {
+                    _state.value = _state.value.copy(fenError = result.error)
+                }
+                is Fen.FenResult.Ok -> {
+                    val position = result.position
+                    _state.value = _state.value.copy(
+                        position = position,
+                        history = emptyList(),
+                        selected = null,
+                        legalTargets = emptySet(),
+                        pendingPromotion = null,
+                        status = position.status(),
+                        analysis = null,
+                        depth = 0,
+                        nodes = 0,
+                        nps = 0,
+                        thinking = false,
+                        engineError = null,
+                        fenError = null,
+                    )
+                    coordinator.beginSession(UUID.randomUUID().toString())
+                    viewModelScope.launch {
+                        container.history.save(Fen.serialize(position), "FEN session")
+                    }
+                }
+            }
         }
-        return true
     }
 
     fun newGame() {
         viewModelScope.launch { coordinator.stop() }
-        _state.value = AnalysisUiState(
-            position = ChessPosition.start(),
-            engineState = _state.value.engineState,
+        val position = ChessPosition.start()
+        _state.value = _state.value.copy(
+            position = position,
+            history = emptyList(),
+            selected = null,
+            legalTargets = emptySet(),
+            pendingPromotion = null,
+            status = position.status(),
+            analysis = null,
+            depth = 0,
+            nodes = 0,
+            nps = 0,
+            thinking = false,
+            fenError = null,
         )
+        coordinator.beginSession(UUID.randomUUID().toString())
     }
 
     fun flip() {
@@ -129,13 +172,44 @@ class AnalysisViewModel(
 
     fun onMovePlayed(move: Move) {
         val s = _state.value
+        if (s.pendingPromotion != null) return
+        val isPromotion = s.position.legalMoves().any {
+            it.from == move.from && it.to == move.to && it.promotion != null
+        }
+        if (isPromotion) {
+            _state.value = s.copy(pendingPromotion = move, selected = null, legalTargets = emptySet())
+            return
+        }
+        applyMove(move)
+    }
+
+    fun choosePromotion(type: PieceType) {
+        val s = _state.value
+        val base = s.pendingPromotion ?: return
+        val move = s.position.legalMoves().firstOrNull {
+            it.from == base.from && it.to == base.to && it.promotion == type
+        } ?: return
+        applyMove(move)
+    }
+
+    fun cancelPromotion() {
+        val s = _state.value
+        if (s.pendingPromotion == null) return
+        _state.value = s.copy(pendingPromotion = null, selected = null, legalTargets = emptySet())
+    }
+
+    private fun applyMove(move: Move) {
+        val s = _state.value
         val position = runCatching { s.position.apply(move) }.getOrNull() ?: return
         _state.value = s.copy(
             position = position,
             history = s.history + move,
             selected = null,
             legalTargets = emptySet(),
+            pendingPromotion = null,
+            status = position.status(),
         )
+        coordinator.beginSession(UUID.randomUUID().toString())
         viewModelScope.launch { coordinator.stop() }
     }
 
@@ -144,7 +218,15 @@ class AnalysisViewModel(
         if (s.history.isEmpty()) return
         val history = s.history.dropLast(1)
         val position = history.fold(ChessPosition.start()) { acc, m -> acc.apply(m) }
-        _state.value = s.copy(position = position, history = history, selected = null, legalTargets = emptySet())
+        _state.value = s.copy(
+            position = position,
+            history = history,
+            selected = null,
+            legalTargets = emptySet(),
+            pendingPromotion = null,
+            status = position.status(),
+        )
+        coordinator.beginSession(UUID.randomUUID().toString())
         viewModelScope.launch { coordinator.stop() }
     }
 
@@ -171,7 +253,7 @@ class AnalysisViewModel(
     private suspend fun ensureEngineReady() {
         if (engineInitialized) return
         val result = coordinator.initialize(container.engineConfig())
-        if (result is com.troxzy.trxchess.engine.api.EngineResult.Error) {
+        if (result is EngineResult.Error) {
             _state.value = _state.value.copy(engineError = result.message)
         } else {
             engineInitialized = true

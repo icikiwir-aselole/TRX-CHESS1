@@ -3,16 +3,22 @@ package com.troxzy.trxchess.ui.screens
 import androidx.activity.ComponentActivity
 import android.content.Context
 import android.graphics.Typeface
+import android.text.InputType
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.lifecycle.ViewModelProvider
 import com.troxzy.trxchess.R
-import com.troxzy.trxchess.chess.Move
+import com.troxzy.trxchess.chess.Fen
+import com.troxzy.trxchess.chess.PieceType
+import com.troxzy.trxchess.chess.PositionStatus
 import com.troxzy.trxchess.chess.Side
 import com.troxzy.trxchess.di.AppContainer
 import com.troxzy.trxchess.ui.analysis.EvalBarView
@@ -20,6 +26,7 @@ import com.troxzy.trxchess.ui.analysis.EvalGraphView
 import com.troxzy.trxchess.ui.analysis.EngineStatusView
 import com.troxzy.trxchess.ui.board.BoardThemes
 import com.troxzy.trxchess.ui.board.BoardView
+import com.troxzy.trxchess.ui.common.PromotionDialogView
 import com.troxzy.trxchess.ui.common.TopBarView
 import com.troxzy.trxchess.ui.components.ButtonStyle
 import com.troxzy.trxchess.ui.components.GlowBackground
@@ -36,8 +43,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Analysis screen: eval bar, animated board, engine status, evaluation
- * graph, stats, PV line and controls. Renders [AnalysisUiState] only — all
- * logic lives in [AnalysisViewModel].
+ * graph, stats, PV line, FEN import, promotion dialog and controls. Renders
+ * [AnalysisUiState] only — all logic lives in [AnalysisViewModel].
  */
 class AnalysisScreen @JvmOverloads constructor(
     context: Context,
@@ -70,6 +77,44 @@ class AnalysisScreen @JvmOverloads constructor(
         maxLines = 2
         setText(R.string.status_unknown)
     }
+    private val statusText = TextView(context).apply {
+        textSize = TypeTokens.BodyStrong.sizeSp
+        typeface = Typeface.create("sans-serif", Typeface.BOLD)
+        gravity = Gravity.CENTER
+        visibility = View.GONE
+    }
+    private val engineErrorText = TextView(context).apply {
+        textSize = TypeTokens.Caption.sizeSp
+        setTextColor(designSystem.colors.danger)
+        gravity = Gravity.CENTER
+        visibility = View.GONE
+        maxLines = 2
+    }
+    private val fenErrorText = TextView(context).apply {
+        textSize = TypeTokens.Caption.sizeSp
+        setTextColor(designSystem.colors.danger)
+        maxLines = 2
+        visibility = View.GONE
+    }
+
+    private val fenInput = EditText(context).apply {
+        hint = resources.getString(R.string.analysis_fen_hint)
+        setTextColor(designSystem.colors.textPrimary)
+        setHintTextColor(designSystem.colors.textMuted)
+        textSize = TypeTokens.Caption.sizeSp
+        typeface = Typeface.create("monospace", Typeface.NORMAL)
+        inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+        imeOptions = EditorInfo.IME_ACTION_DONE
+        maxLines = 2
+        setSingleLine(false)
+        setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                viewModel.loadFen(text.toString())
+                true
+            } else false
+        }
+        setText(if (initialFen != null) initialFen else "")
+    }
 
     private val analyzeButton = TrxButton(context, null, designSystem).apply {
         text = resources.getString(R.string.analysis_controls_analyze)
@@ -96,6 +141,21 @@ class AnalysisScreen @JvmOverloads constructor(
         style = ButtonStyle.GHOST
         setOnClickListener { viewModel.flip() }
     }
+    private val fenLoadButton = TrxButton(context, null, designSystem).apply {
+        text = resources.getString(R.string.analysis_fen_load)
+        style = ButtonStyle.SECONDARY
+        setOnClickListener { viewModel.loadFen(fenInput.text.toString()) }
+    }
+    private val fenClearButton = TrxButton(context, null, designSystem).apply {
+        text = resources.getString(R.string.analysis_fen_clear)
+        style = ButtonStyle.GHOST
+        setOnClickListener { fenInput.setText("") }
+    }
+    private val retryButton = TrxButton(context, null, designSystem).apply {
+        text = resources.getString(R.string.error_retry)
+        style = ButtonStyle.SECONDARY
+        setOnClickListener { viewModel.retryEngine() }
+    }
 
     private val topBar = TopBarView(context, null, designSystem).apply {
         title = resources.getString(R.string.analysis_title)
@@ -103,12 +163,25 @@ class AnalysisScreen @JvmOverloads constructor(
         onBack = { activity.onBackPressedDispatcher.onBackPressed() }
     }
 
+    private val promotionDialog = PromotionDialogView(
+        context,
+        designSystem,
+        onPick = { type: PieceType -> viewModel.choosePromotion(type) },
+        onCancel = { viewModel.cancelPromotion() },
+    )
+
     init {
         addView(GlowBackground(context, null, designSystem), FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         addView(topBar, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56)))
 
+        val scroll = ScrollView(context).apply {
+            isFillViewport = true
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        addView(scroll, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT).apply { topMargin = dp(56) })
+
         val content = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        addView(content, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT).apply { topMargin = dp(56) })
+        scroll.addView(content, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
         // board row: eval bar + board
         val boardArea = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
@@ -144,6 +217,40 @@ class AnalysisScreen @JvmOverloads constructor(
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(44)).apply { leftMargin = dp(16); rightMargin = dp(16) },
         )
 
+        content.addView(statusText, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(28)))
+
+        // FEN import row
+        val fenRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(2), dp(16), dp(2))
+        }
+        fenRow.addView(
+            fenInput,
+            LinearLayout.LayoutParams(0, dp(48), 1f),
+        )
+        fenRow.addView(fenLoadButton, LinearLayout.LayoutParams(dp(76), dp(44)).apply { leftMargin = dp(8) })
+        fenRow.addView(fenClearButton, LinearLayout.LayoutParams(dp(64), dp(44)).apply { leftMargin = dp(4) })
+        content.addView(fenRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56)))
+
+        content.addView(
+            fenErrorText,
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                leftMargin = dp(20)
+                rightMargin = dp(20)
+            },
+        )
+
+        // engine error banner
+        val errorRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), 0, dp(16), 0)
+        }
+        errorRow.addView(engineErrorText, LinearLayout.LayoutParams(0, dp(36), 1f))
+        errorRow.addView(retryButton, LinearLayout.LayoutParams(dp(84), dp(40)).apply { leftMargin = dp(8) })
+        content.addView(errorRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(44)))
+
         // controls
         val controls = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -178,6 +285,7 @@ class AnalysisScreen @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        promotionDialog.dismiss()
         scope.cancel()
     }
 
@@ -212,10 +320,71 @@ class AnalysisScreen @JvmOverloads constructor(
         val line = best?.pv?.joinToString(" ").orEmpty()
         pvLine.text = line.ifEmpty { resources.getString(R.string.analysis_best_line) + ": —" }
 
+        renderStatus(state.status)
+        renderFenErrors(state.fenError)
+        renderEngineError(state.engineError)
+
         analyzeButton.enabledState = !state.thinking && state.engineState !is com.troxzy.trxchess.engine.api.EngineState.Failed
         stopButton.enabledState = state.thinking
         undoButton.enabledState = state.history.isNotEmpty()
         newButton.enabledState = state.history.isNotEmpty() || state.analysis != null
+
+        if (state.pendingPromotion != null) {
+            promotionDialog.show(state.position.sideToMove)
+        } else {
+            promotionDialog.dismiss()
+        }
+    }
+
+    private fun renderStatus(status: PositionStatus) {
+        when (status) {
+            PositionStatus.NORMAL -> statusText.visibility = View.GONE
+            PositionStatus.CHECK -> {
+                statusText.visibility = View.VISIBLE
+                statusText.setText(R.string.position_status_check)
+                statusText.setTextColor(designSystem.colors.warning)
+            }
+            PositionStatus.CHECKMATE -> {
+                statusText.visibility = View.VISIBLE
+                statusText.setText(R.string.position_status_checkmate)
+                statusText.setTextColor(designSystem.colors.danger)
+            }
+            PositionStatus.STALEMATE -> {
+                statusText.visibility = View.VISIBLE
+                statusText.setText(R.string.position_status_stalemate)
+                statusText.setTextColor(designSystem.colors.textSecondary)
+            }
+        }
+    }
+
+    private fun renderFenErrors(error: Fen.FenError?) {
+        if (error == null) {
+            fenErrorText.visibility = View.GONE
+            return
+        }
+        val id = when (error) {
+            Fen.FenError.INVALID_FIELD_COUNT -> R.string.fen_error_field_count
+            Fen.FenError.INVALID_BOARD -> R.string.fen_error_board
+            Fen.FenError.INVALID_PIECE -> R.string.fen_error_piece
+            Fen.FenError.INVALID_SIDE_TO_MOVE -> R.string.fen_error_side_to_move
+            Fen.FenError.INVALID_CASTLING_RIGHTS -> R.string.fen_error_castling
+            Fen.FenError.INVALID_EN_PASSANT -> R.string.fen_error_en_passant
+            Fen.FenError.INVALID_HALFMOVE_CLOCK -> R.string.fen_error_halfmove
+            Fen.FenError.INVALID_FULLMOVE_NUMBER -> R.string.fen_error_fullmove
+        }
+        fenErrorText.setText(id)
+        fenErrorText.visibility = View.VISIBLE
+    }
+
+    private fun renderEngineError(error: String?) {
+        if (error == null) {
+            engineErrorText.visibility = View.GONE
+            retryButton.visibility = View.GONE
+            return
+        }
+        engineErrorText.text = error
+        engineErrorText.visibility = View.VISIBLE
+        retryButton.visibility = View.VISIBLE
     }
 
     private fun statCell(label: String, value: TextView): LinearLayout {
