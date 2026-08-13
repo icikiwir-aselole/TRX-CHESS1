@@ -10,4 +10,6 @@ class NativeEngine : ChessEngine by UciEngine(native = { command ->
         val depth = Regex("depth (\\d+)").find(command)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 12
         NativeEngineBridge.nativeAnalyze(fen, depth).lineSequence().toList()
     }
-})
+}) {
+    override val version: String = "native-1.0.0"
+}

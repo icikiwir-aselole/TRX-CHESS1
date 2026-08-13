@@ -40,6 +40,8 @@ class UciEngine(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) : ChessEngine {
 
+    override val version: String = "uci-1.0.0"
+
     private val state = MutableStateFlow<EngineState>(EngineState.Uninitialized)
     private val analysis = MutableSharedFlow<EngineAnalysis>(
         extraBufferCapacity = 64,
@@ -68,7 +70,7 @@ class UciEngine(
         current = p
         job = scope.launch {
             state.value = EngineState.Analyzing
-            val reqId = UUID.randomUUID().toString()
+            val reqId = request.analysisId.ifBlank { UUID.randomUUID().toString() }
             val key = Fen.serialize(p).hashCode().toString(16)
             val lines = if (native != null) {
                 parseNative(native.invoke(buildUciCommand(request)) ?: emptyList()).lines
