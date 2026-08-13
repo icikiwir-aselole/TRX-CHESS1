@@ -1,4 +1,13 @@
+import java.util.Properties
+
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
+
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun secret(name: String, env: String): String? = keystoreProps.getProperty(name) ?: System.getenv(env)
+
 android {
     namespace = "com.troxzy.trxchess"
     compileSdk = 37
@@ -10,10 +19,28 @@ android {
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+    signingConfigs {
+        val path = secret("signing.store.path", "SIGNING_STORE_PATH")
+        val pw = secret("signing.store.password", "SIGNING_STORE_PASSWORD")
+        val alias = secret("signing.key.alias", "SIGNING_KEY_ALIAS")
+        val kpw = secret("signing.key.password", "SIGNING_KEY_PASSWORD")
+        if (path != null && pw != null && alias != null && kpw != null) {
+            create("release") {
+                storeFile = file(path)
+                storePassword = pw
+                keyAlias = alias
+                keyPassword = kpw
+            }
+        }
+    }
     buildTypes {
         debug { applicationIdSuffix = ".debug"; versionNameSuffix = "-debug" }
         create("staging") { initWith(getByName("debug")); matchingFallbacks += listOf("debug") }
-        release { isMinifyEnabled = true; isShrinkResources = true; proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro") }
+        release {
+            isMinifyEnabled = true; isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")
+        }
     }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
     buildFeatures { buildConfig = true }
