@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="overlay_channel_name">Analysis overlay</string>
+    <string name="overlay_notification_title">TRX-CHESS</string>
+    <string name="overlay_notification_text">Analysis overlay is running</string>
+</resources>

@@ -1,5 +1,7 @@
 package com.troxzy.trxchess.overlay
 
+import com.troxzy.trxchess.overlay.R
+
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -51,14 +53,14 @@ class OverlayService : Service() {
     private fun startAsForeground() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Analysis overlay",
+            getString(R.string.overlay_channel_name),
             NotificationManager.IMPORTANCE_MIN,
         )
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(channel)
         val notification = Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("TRX-CHESS")
-            .setContentText("Analysis overlay is running")
+            .setContentTitle(getString(R.string.overlay_notification_title))
+            .setContentText(getString(R.string.overlay_notification_text))
             .setSmallIcon(android.R.drawable.ic_menu_view)
             .setOngoing(true)
             .build()
