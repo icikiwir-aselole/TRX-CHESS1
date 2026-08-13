@@ -2,6 +2,7 @@ package com.troxzy.trxchess.chess
 
 enum class Side { WHITE, BLACK; fun other() = if (this == WHITE) BLACK else WHITE }
 enum class PieceType { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING }
+enum class PositionStatus { NORMAL, CHECK, CHECKMATE, STALEMATE }
 data class Piece(val side: Side, val type: PieceType)
 data class Square(val file: Int, val rank: Int) { init { require(file in 0..7 && rank in 0..7) }; override fun toString() = "${('a'.code+file).toChar()}${rank+1}"; companion object { fun parse(s:String)=Square(s[0]-'a',s[1]-'1') } }
 data class Move(val from: Square, val to: Square, val promotion: PieceType? = null, val isEnPassant: Boolean = false, val isCastle: Boolean = false) { override fun toString() = from.toString()+to.toString()+(promotion?.let{it.name.lowercase().first()} ?: "") }
@@ -28,6 +29,17 @@ data class ChessPosition(val board: Map<Square,Piece>, val sideToMove: Side, val
         return false
     }
     fun inCheck(side:Side)=board.entries.firstOrNull{it.value.side==side&&it.value.type==PieceType.KING}?.key?.let{isSquareAttacked(it,side.other())} ?: true
+
+    /** Terminal/status classification derived purely from rules. */
+    fun status(): PositionStatus {
+        val hasLegal = legalMoves().isNotEmpty()
+        return when {
+            inCheck(sideToMove) -> if (hasLegal) PositionStatus.CHECK else PositionStatus.CHECKMATE
+            !hasLegal -> PositionStatus.STALEMATE
+            else -> PositionStatus.NORMAL
+        }
+    }
+
     fun legalMoves():List<Move> = pseudoMoves().filter { apply(it).let { !it.inCheck(sideToMove) } }
     fun apply(move:Move):ChessPosition {
         val mutable=board.toMutableMap(); val moving=mutable.remove(move.from) ?: return this; mutable.remove(move.to)
@@ -55,6 +67,6 @@ data class ChessPosition(val board: Map<Square,Piece>, val sideToMove: Side, val
     private fun addSliders(s:Square,p:Piece,dfs:IntArray,drs:IntArray,out:MutableList<Move>){for(i in dfs.indices){var f=s.file+dfs[i];var r=s.rank+drs[i];while(f in 0..7&&r in 0..7){val sq=Square(f,r);val q=board[sq];if(q==null)out+=Move(s,sq) else {if(q.side!=p.side)out+=Move(s,sq);break};f+=dfs[i];r+=drs[i]}}}
     companion object {
         fun start()=fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-        fun fromFen(fen:String):ChessPosition{ val x=fen.trim().split(Regex("\\s+")); require(x.size>=4); val b=mutableMapOf<Square,Piece>(); x[0].split('/').forEachIndexed{ri,row->var f=0; for(c in row){if(c.isDigit())f+=c.digitToInt() else{val side=if(c.isUpperCase())Side.WHITE else Side.BLACK;val type=when(c.lowercaseChar()){'p'->PieceType.PAWN;'n'->PieceType.KNIGHT;'b'->PieceType.BISHOP;'r'->PieceType.ROOK;'q'->PieceType.QUEEN;'k'->PieceType.KING;else->error("bad FEN")};b[Square(f,7-ri)]=Piece(side,type);f++}}}; val stm=if(x[1]=="w")Side.WHITE else Side.BLACK; val cast=x[2].filter{it!='-'}.map{it.toString()}.toSet(); val ep=if(x[3]=="-")null else Square.parse(x[3]); return ChessPosition(b,stm,cast,ep,x.getOrNull(4)?.toIntOrNull()?:0,x.getOrNull(5)?.toIntOrNull()?:1)}
+        fun fromFen(fen:String):ChessPosition=when(val r=Fen.parseStrict(fen)){is Fen.FenResult.Ok->r.position;is Fen.FenResult.Err->error("Invalid FEN: ${r.error}")}
     }
 }
