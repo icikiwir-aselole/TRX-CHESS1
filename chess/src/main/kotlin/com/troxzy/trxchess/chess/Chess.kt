@@ -40,7 +40,10 @@ data class ChessPosition(val board: Map<Square,Piece>, val sideToMove: Side, val
         }
     }
 
-    fun legalMoves():List<Move> = pseudoMoves().filter { apply(it).let { !it.inCheck(sideToMove) } }
+    fun legalMoves():List<Move> = pseudoMoves().filter {
+        val capturesKing = board[it.to]?.type == PieceType.KING
+        !capturesKing && apply(it).let { !it.inCheck(sideToMove) }
+    }
     fun apply(move:Move):ChessPosition {
         val mutable=board.toMutableMap(); val moving=mutable.remove(move.from) ?: return this; mutable.remove(move.to)
         if(move.isEnPassant){ val capRank=move.to.rank+(if(moving.side==Side.WHITE)-1 else 1); mutable.remove(Square(move.to.file,capRank)) }
