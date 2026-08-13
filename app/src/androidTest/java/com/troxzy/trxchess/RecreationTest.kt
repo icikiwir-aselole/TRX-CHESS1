@@ -57,4 +57,32 @@ class RecreationTest {
             .perform(scrollTo(), click())
         TestHelpers.waitForText(string(R.string.analysis_title))
     }
+
+    @Test
+    fun recreationDuringPromotionDialogLandsOnHomeWithoutCrash() {
+        TestHelpers.waitForView(withContentDescription(string(R.string.home_quick_analysis)))
+        onView(withContentDescription(string(R.string.home_quick_analysis)))
+            .perform(scrollTo(), click())
+        TestHelpers.waitForText(string(R.string.analysis_title))
+        onView(androidx.test.espresso.matcher.ViewMatchers.withHint(string(R.string.analysis_fen_hint)))
+            .perform(scrollTo(), androidx.test.espresso.action.ViewActions.replaceText("4k3/P7/8/8/8/8/8/4K3 w - - 0 1"))
+        onView(withContentDescription(string(R.string.analysis_fen_load)))
+            .perform(scrollTo(), click())
+
+        onView(androidx.test.espresso.matcher.ViewMatchers.withClassName(org.hamcrest.Matchers.equalTo(com.troxzy.trxchess.ui.board.BoardView::class.java.name)))
+            .perform(TestHelpers.boardTap(0, 6))
+        onView(androidx.test.espresso.matcher.ViewMatchers.withClassName(org.hamcrest.Matchers.equalTo(com.troxzy.trxchess.ui.board.BoardView::class.java.name)))
+            .perform(TestHelpers.boardTap(0, 7))
+
+        TestHelpers.waitForText(string(R.string.promotion_title))
+
+        activityRule.scenario.recreate()
+
+        // Dialog belongs to the recreated activity; the app must land on
+        // Home without crashing and without a dangling dialog.
+        TestHelpers.waitForText(string(R.string.home_title))
+        TestHelpers.assertAbsent(
+            androidx.test.espresso.matcher.ViewMatchers.withText(string(R.string.promotion_title)),
+        )
+    }
 }

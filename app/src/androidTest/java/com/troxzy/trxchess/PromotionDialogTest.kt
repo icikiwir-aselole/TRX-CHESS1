@@ -1,11 +1,8 @@
 package com.troxzy.trxchess
 
 import android.content.Context
-import android.view.View
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.onView
-import androidx.test.espresso.UiController
-import androidx.test.espresso.ViewAction
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.action.ViewActions.replaceText
 import androidx.test.espresso.action.ViewActions.scrollTo
@@ -18,7 +15,6 @@ import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
 import com.troxzy.trxchess.ui.board.BoardView
-import org.hamcrest.Matcher
 import org.hamcrest.Matchers.equalTo
 import org.junit.Rule
 import org.junit.Test
@@ -58,9 +54,9 @@ class PromotionDialogTest {
 
         // a7 -> a8
         onView(withClassName(equalTo(BoardView::class.java.name)))
-            .perform(BoardTapAction(0, 6))
+            .perform(TestHelpers.boardTap(0, 6))
         onView(withClassName(equalTo(BoardView::class.java.name)))
-            .perform(BoardTapAction(0, 7))
+            .perform(TestHelpers.boardTap(0, 7))
 
         TestHelpers.waitForView(withText(string(R.string.promotion_title)))
         TestHelpers.waitForView(
@@ -78,9 +74,9 @@ class PromotionDialogTest {
         openAnalysisWithPromotionFen()
 
         onView(withClassName(equalTo(BoardView::class.java.name)))
-            .perform(BoardTapAction(0, 6))
+            .perform(TestHelpers.boardTap(0, 6))
         onView(withClassName(equalTo(BoardView::class.java.name)))
-            .perform(BoardTapAction(0, 7))
+            .perform(TestHelpers.boardTap(0, 7))
 
         TestHelpers.waitForView(withText(string(R.string.promotion_title)))
 
@@ -98,9 +94,9 @@ class PromotionDialogTest {
         // Rapid taps: selection then target twice; only one dialog may open.
         for (i in 1..3) {
             onView(withClassName(equalTo(BoardView::class.java.name)))
-                .perform(BoardTapAction(0, 6))
+                .perform(TestHelpers.boardTap(0, 6))
             onView(withClassName(equalTo(BoardView::class.java.name)))
-                .perform(BoardTapAction(0, 7))
+                .perform(TestHelpers.boardTap(0, 7))
         }
 
         TestHelpers.waitForView(withText(string(R.string.promotion_title)))
@@ -111,20 +107,56 @@ class PromotionDialogTest {
         TestHelpers.waitForText(string(R.string.analysis_title))
     }
 
-    private class BoardTapAction(
-        private val file: Int,
-        private val rank: Int,
-    ) : ViewAction {
-        override fun getConstraints(): Matcher<View> = isDisplayed()
-        override fun getDescription(): String = "tap board square ($file, $rank)"
-        override fun perform(uiController: UiController, view: View) {
-            val sq = view.width / 8f
-            TestHelpers.tapAt(
-                view,
-                (file * sq + sq / 2f) / view.width,
-                ((7 - rank) * sq + sq / 2f) / view.height,
-            )
-            uiController.loopMainThreadForAtLeast(150)
-        }
+    @Test
+    fun blackPromotionShowsChooserAndAppliesKnight() {
+        // Black to move: pawn b2 -> b1 with promotion chooser.
+        TestHelpers.waitForView(withContentDescription(string(R.string.home_quick_analysis)))
+        onView(withContentDescription(string(R.string.home_quick_analysis)))
+            .perform(scrollTo(), click())
+        TestHelpers.waitForText(string(R.string.analysis_title))
+        onView(withHint(string(R.string.analysis_fen_hint)))
+            .perform(scrollTo(), replaceText("4k3/8/8/8/8/8/1p6/4K3 b - - 0 1"))
+        onView(withContentDescription(string(R.string.analysis_fen_load)))
+            .perform(scrollTo(), click())
+
+        onView(withClassName(equalTo(BoardView::class.java.name)))
+            .perform(TestHelpers.boardTap(1, 1))
+        onView(withClassName(equalTo(BoardView::class.java.name)))
+            .perform(TestHelpers.boardTap(1, 0))
+
+        TestHelpers.waitForView(withText(string(R.string.promotion_title)))
+        TestHelpers.waitForView(
+            withContentDescription(string(R.string.promotion_knight)),
+        )
+
+        onView(withContentDescription(string(R.string.promotion_knight))).perform(click())
+
+        // Black knight on b1; dialog gone, board still interactive (no crash).
+        TestHelpers.assertAbsent(withText(string(R.string.promotion_title)))
+        TestHelpers.waitForView(withClassName(equalTo(BoardView::class.java.name)))
+    }
+
+    @Test
+    fun promotionCaptureAppliesAndRegistersCheck() {
+        // White pawn a7 captures the rook on b8, promoting to queen; queen
+        // on b8 checks the black king on c8.
+        TestHelpers.waitForView(withContentDescription(string(R.string.home_quick_analysis)))
+        onView(withContentDescription(string(R.string.home_quick_analysis)))
+            .perform(scrollTo(), click())
+        TestHelpers.waitForText(string(R.string.analysis_title))
+        onView(withHint(string(R.string.analysis_fen_hint)))
+            .perform(scrollTo(), replaceText("1rk5/P7/8/8/8/8/8/4K3 w - - 0 1"))
+        onView(withContentDescription(string(R.string.analysis_fen_load)))
+            .perform(scrollTo(), click())
+
+        onView(withClassName(equalTo(BoardView::class.java.name)))
+            .perform(TestHelpers.boardTap(0, 6))
+        onView(withClassName(equalTo(BoardView::class.java.name)))
+            .perform(TestHelpers.boardTap(1, 7))
+
+        TestHelpers.waitForView(withText(string(R.string.promotion_title)))
+        onView(withContentDescription(string(R.string.promotion_queen))).perform(click())
+
+        TestHelpers.waitForText(string(R.string.position_status_check))
     }
 }

@@ -5,6 +5,8 @@ import android.view.MotionEvent
 import android.view.View
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.NoMatchingViewException
+import androidx.test.espresso.UiController
+import androidx.test.espresso.ViewAction
 import androidx.test.espresso.assertion.ViewAssertions.doesNotExist
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
@@ -81,6 +83,24 @@ object TestHelpers {
         } finally {
             down.recycle()
             up.recycle()
+        }
+    }
+
+    /**
+     * Taps a board square in file/rank coordinates (rank 0 = first rank from
+     * white's side), then lets the main thread settle.
+     */
+    fun boardTap(file: Int, rank: Int): ViewAction = object : ViewAction {
+        override fun getConstraints(): Matcher<View> = isDisplayed()
+        override fun getDescription(): String = "tap board square ($file, $rank)"
+        override fun perform(uiController: UiController, view: View) {
+            val sq = view.width / 8f
+            tapAt(
+                view,
+                (file * sq + sq / 2f) / view.width,
+                ((7 - rank) * sq + sq / 2f) / view.height,
+            )
+            uiController.loopMainThreadForAtLeast(150)
         }
     }
 }

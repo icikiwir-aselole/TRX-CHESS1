@@ -85,4 +85,22 @@ class FenImportTest {
         onView(withHint(string(R.string.analysis_fen_hint)))
             .check(androidx.test.espresso.assertion.ViewAssertions.matches(withText("")))
     }
+
+    @Test
+    fun rapidRepeatedLoadsSettleOnLastSubmittedFen() {
+        openAnalysis()
+        val checkmateFen = "4R2k/5ppp/8/8/8/8/8/4K3 b - - 0 1"
+        val checkFen = "4k3/8/8/8/8/8/4r3/4K3 w - - 0 1"
+        // Rapidly replace + load several times; the last submitted load must
+        // win even if background parsing completes out of order.
+        repeat(3) {
+            onView(withHint(string(R.string.analysis_fen_hint)))
+                .perform(scrollTo(), replaceText(if (it % 2 == 0) checkmateFen else checkFen))
+            onView(withContentDescription(string(R.string.analysis_fen_load)))
+                .perform(scrollTo(), click())
+        }
+
+        TestHelpers.waitForText(string(R.string.position_status_checkmate))
+        TestHelpers.assertAbsent(withText(string(R.string.position_status_check)))
+    }
 }
